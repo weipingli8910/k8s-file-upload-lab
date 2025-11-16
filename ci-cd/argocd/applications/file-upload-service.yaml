@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-org/k8s-file-upload-lab  # Update with your repo URL
+    repoURL: https://github.com/weipingli8910/k8s-file-upload-lab  # Update with your repo URL
     targetRevision: main
     path: charts/file-upload-service
     helm:
