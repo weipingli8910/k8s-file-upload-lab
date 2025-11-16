@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-upload-config
+  namespace: file-upload
+data:
+  S3_BUCKET: "terraform-20251115065342088700000001"  # Will be replaced by script or manually
+  AWS_REGION: "us-east-1"
+  PORT: "8080"
+  LOG_LEVEL: "info"
+

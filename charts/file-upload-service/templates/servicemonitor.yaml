@@ -1,0 +1,19 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "file-upload-service.fullname" . }}
+  namespace: {{ include "file-upload-service.namespace" . }}
+  labels:
+    {{- include "file-upload-service.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "file-upload-service.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: {{ .Values.service.name }}
+    interval: {{ .Values.monitoring.serviceMonitor.interval }}
+    path: {{ .Values.monitoring.prometheus.path }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+{{- end }}
+

@@ -1,0 +1,233 @@
+# Default values for monitoring-stack
+# This is a YAML-formatted file.
+
+# Namespace
+namespace:
+  create: true
+  name: monitoring
+
+# Prometheus Operator (kube-prometheus-stack)
+# Set to false if you want to use standalone Prometheus/Grafana
+prometheusOperator:
+  enabled: true
+
+# Kube-prometheus-stack values
+# Full values reference: https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml
+kube-prometheus-stack:
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      retention: 15d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp2  # For AWS EKS, use gp2 or gp3
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+
+  # Grafana configuration
+  grafana:
+    enabled: true
+    adminUser: admin
+    adminPassword: admin123  # Change in production!
+    persistence:
+      enabled: true
+      storageClassName: gp2
+      size: 5Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    service:
+      type: ClusterIP
+      port: 80
+
+  # Alertmanager configuration
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      retention: 120h
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp2
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 2Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+  # Prometheus Operator configuration
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+      limits:
+        cpu: 200m
+        memory: 200Mi
+
+# Standalone Prometheus (if prometheusOperator.enabled = false)
+standalonePrometheus:
+  enabled: false
+  image:
+    repository: prom/prometheus
+    tag: latest
+  replicas: 1
+  retention: 15d
+  scrapeInterval: 30s
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+# Standalone Grafana (if prometheusOperator.enabled = false)
+standaloneGrafana:
+  enabled: false
+  image:
+    repository: grafana/grafana
+    tag: latest
+  replicas: 1
+  adminUser: admin
+  adminPassword: admin123  # Change in production!
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Standalone Alertmanager (if prometheusOperator.enabled = false)
+standaloneAlertmanager:
+  enabled: false
+  image:
+    repository: prom/alertmanager
+    tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Prometheus Rules
+prometheusRules:
+  enabled: true
+  rules:
+    fileUploadService:
+      enabled: true
+      interval: 30s
+      groups:
+        - name: file_upload_service
+          interval: 30s
+          rules:
+            # High CPU usage
+            - alert: HighCPUUsage
+              expr: rate(container_cpu_usage_seconds_total{namespace="file-upload"}[5m]) * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "High CPU usage detected"
+                description: "CPU usage is above 80% for {{ $labels.pod }}"
+            
+            # High memory usage
+            - alert: HighMemoryUsage
+              expr: container_memory_usage_bytes{namespace="file-upload"} / container_spec_memory_limit_bytes > 0.85
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "High memory usage detected"
+                description: "Memory usage is above 85% for {{ $labels.pod }}"
+            
+            # High error rate
+            - alert: HighErrorRate
+              expr: rate(http_requests_total{namespace="file-upload",status_code=~"5.."}[5m]) > 0.01
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: "High error rate detected"
+                description: "Error rate is above 1% for file upload service"
+            
+            # Service down
+            - alert: ServiceDown
+              expr: up{job="file-upload-service"} == 0
+              for: 2m
+              labels:
+                severity: critical
+              annotations:
+                summary: "Service is down"
+                description: "File upload service is not responding"
+            
+            # High latency
+            - alert: HighLatency
+              expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{namespace="file-upload"}[5m])) > 1
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "High latency detected"
+                description: "95th percentile latency is above 1s"
+
+# Alertmanager configuration
+alertmanagerConfig:
+  enabled: true
+  global:
+    resolve_timeout: 5m
+  route:
+    group_by: ['alertname', 'severity']
+    group_wait: 10s
+    group_interval: 10s
+    repeat_interval: 12h
+    receiver: 'default'
+    routes:
+      - match:
+          severity: critical
+        receiver: 'critical'
+      - match:
+          severity: warning
+        receiver: 'warning'
+  receivers:
+    - name: 'default'
+      # Configure with your notification channels
+      # webhook_configs:
+      #   - url: 'http://your-webhook-url'
+    - name: 'critical'
+      # webhook_configs:
+      #   - url: 'http://your-critical-webhook-url'
+    - name: 'warning'
+      # webhook_configs:
+      #   - url: 'http://your-warning-webhook-url'
+

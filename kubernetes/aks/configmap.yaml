@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-upload-config
+  namespace: file-upload
+data:
+  STORAGE_ACCOUNT: "CHANGE_ME"
+  STORAGE_CONTAINER: "file-upload"
+  AZURE_REGION: "eastus"
+  PORT: "8080"
+  LOG_LEVEL: "info"
+

@@ -1,0 +1,33 @@
+# AWS EKS specific values for monitoring stack
+
+# Use gp3 for better performance (or gp2 for compatibility)
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3  # Use gp3 for AWS EKS
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi  # Increase storage for production
+  
+  grafana:
+    persistence:
+      storageClassName: gp3
+      size: 10Gi
+  
+  alertmanager:
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+

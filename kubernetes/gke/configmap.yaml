@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-upload-config
+  namespace: file-upload
+data:
+  GCS_BUCKET: "CHANGE_ME"  # Will be replaced by script or manually
+  GCP_PROJECT: "CHANGE_ME"
+  GCP_REGION: "us-central1"
+  PORT: "8080"
+  LOG_LEVEL: "info"
+

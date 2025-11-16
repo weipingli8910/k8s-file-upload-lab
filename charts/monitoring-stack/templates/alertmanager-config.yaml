@@ -1,0 +1,33 @@
+{{- if and .Values.alertmanagerConfig.enabled .Values.prometheusOperator.enabled }}
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: {{ include "monitoring-stack.fullname" . }}-config
+  namespace: {{ include "monitoring-stack.namespace" . }}
+  labels:
+    {{- include "monitoring-stack.labels" . | nindent 4 }}
+spec:
+  route:
+    groupBy: {{ .Values.alertmanagerConfig.route.group_by | toJson }}
+    groupWait: {{ .Values.alertmanagerConfig.route.group_wait }}
+    groupInterval: {{ .Values.alertmanagerConfig.route.group_interval }}
+    repeatInterval: {{ .Values.alertmanagerConfig.route.repeat_interval }}
+    receiver: {{ .Values.alertmanagerConfig.route.receiver }}
+    routes:
+    {{- range .Values.alertmanagerConfig.route.routes }}
+    - match:
+        {{- toYaml .match | nindent 8 }}
+      receiver: {{ .receiver }}
+    {{- end }}
+  receivers:
+  {{- range .Values.alertmanagerConfig.receivers }}
+  - name: {{ .name }}
+    {{- if .webhook_configs }}
+    webhookConfigs:
+    {{- range .webhook_configs }}
+    - url: {{ .url }}
+    {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+

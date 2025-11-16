@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: file-upload-service
+  namespace: file-upload
+  labels:
+    app: file-upload-service
+spec:
+  selector:
+    matchLabels:
+      app: file-upload-service
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+    scrapeTimeout: 10s
+

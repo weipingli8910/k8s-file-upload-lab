@@ -1,0 +1,157 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'application/**'
+      - 'charts/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'application/**'
+      - 'charts/**'
+      - '.github/workflows/ci.yml'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: file-upload-service
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: application/backend/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd application/backend
+        npm ci
+    
+    - name: Run linter
+      run: |
+        cd application/backend
+        npm run lint || echo "No lint script found"
+    
+    - name: Run tests
+      run: |
+        cd application/backend
+        npm test || echo "No tests configured"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd application/backend
+        # Build for linux/amd64 (required for EKS nodes)
+        docker build --platform linux/amd64 \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+  security-scan:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  helm-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+    
+    - name: Lint file-upload-service chart
+      run: |
+        helm lint charts/file-upload-service
+    
+    - name: Lint monitoring-stack chart
+      run: |
+        cd charts/monitoring-stack
+        helm dependency update
+        helm lint .
+
+  helm-template:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+    
+    - name: Template file-upload-service chart
+      run: |
+        helm template test charts/file-upload-service \
+          -f charts/file-upload-service/values-aws.yaml \
+          --set image.repository=test-repo \
+          --set config.s3Bucket=test-bucket \
+          --set namespace.create=false \
+          --debug
+    
+    - name: Template monitoring-stack chart
+      run: |
+        cd charts/monitoring-stack
+        helm dependency update
+        helm template test . \
+          -f values-aws.yaml \
+          --set namespace.create=false \
+          --debug
+

@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        ECR_REPOSITORY = 'file-upload-service'
+        CLUSTER_NAME = 'file-upload-cluster'
+        NAMESPACE = 'file-upload'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                script {
+                    def imageTag = env.BUILD_NUMBER
+                    sh """
+                        cd application/backend
+                        docker build -t ${ECR_REPOSITORY}:${imageTag} .
+                    """
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            steps {
+                script {
+                    def imageTag = env.BUILD_NUMBER
+                    sh """
+                        trivy image ${ECR_REPOSITORY}:${imageTag} || true
+                    """
+                }
+            }
+        }
+        
+        stage('Push to ECR') {
+            steps {
+                script {
+                    withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                        sh """
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                            docker tag ${ECR_REPOSITORY}:${env.BUILD_NUMBER} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.BUILD_NUMBER}
+                            docker tag ${ECR_REPOSITORY}:${env.BUILD_NUMBER} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.BUILD_NUMBER}
+                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            steps {
+                script {
+                    sh """
+                        kubectl set image deployment/file-upload-service file-upload-service=${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.BUILD_NUMBER} -n ${NAMESPACE}
+                        kubectl rollout status deployment/file-upload-service -n ${NAMESPACE}
+                    """
+                }
+            }
+        }
+        
+        stage('Smoke Tests') {
+            steps {
+                script {
+                    def ingressUrl = sh(script: "kubectl get ingress file-upload-ingress -n ${NAMESPACE} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'", returnStdout: true).trim()
+                    sh """
+                        curl -f http://${ingressUrl}/health || exit 1
+                    """
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: 'Deploy to production?', ok: 'Deploy'
+                script {
+                    sh """
+                        kubectl set image deployment/file-upload-service file-upload-service=${ECR_REGISTRY}/${ECR_REPOSITORY}:${env.BUILD_NUMBER} -n ${NAMESPACE}
+                        kubectl rollout status deployment/file-upload-service -n ${NAMESPACE}
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
+

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "file-upload-service.fullname" . }}-config
+  namespace: {{ include "file-upload-service.namespace" . }}
+  labels:
+    {{- include "file-upload-service.labels" . | nindent 4 }}
+data:
+{{- if eq .Values.cloudProvider "aws" }}
+  S3_BUCKET: {{ .Values.config.s3Bucket | quote }}
+  AWS_REGION: {{ .Values.config.awsRegion | quote }}
+{{- else if eq .Values.cloudProvider "gcp" }}
+  GCS_BUCKET: {{ .Values.config.gcsBucket | quote }}
+  GCP_PROJECT: {{ .Values.config.gcpProject | quote }}
+{{- else if eq .Values.cloudProvider "azure" }}
+  AZURE_STORAGE_ACCOUNT: {{ .Values.config.storageAccount | quote }}
+  AZURE_STORAGE_CONTAINER: {{ .Values.config.storageContainer | quote }}
+{{- end }}
+  PORT: {{ .Values.config.port | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+

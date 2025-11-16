@@ -1,0 +1,15 @@
+project_id     = "your-gcp-project-id"
+region         = "us-central1"
+cluster_name   = "file-upload-cluster"
+environment    = "lab"
+subnet_cidr    = "10.0.0.0/24"
+node_count     = 2
+min_node_count = 1
+max_node_count = 4
+machine_type   = "e2-medium"
+disk_size_gb   = 30
+
+# IMPORTANT: Change this to a unique bucket name
+# GCS bucket names must be globally unique
+gcs_bucket_name = "file-upload-lab-1234567890"
+

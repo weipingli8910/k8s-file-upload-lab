@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-upload-service
+  namespace: file-upload
+  labels:
+    app: file-upload-service
+spec:
+  type: LoadBalancer  # GKE LoadBalancer (creates GCP Load Balancer)
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: file-upload-service
+

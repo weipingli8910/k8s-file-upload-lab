@@ -1,0 +1,10 @@
+cluster_name   = "file-upload-cluster"
+location       = "eastus"
+environment    = "lab"
+address_space  = "10.0.0.0/16"
+subnet_cidr    = "10.0.1.0/24"
+node_count     = 2
+min_node_count = 1
+max_node_count = 4
+vm_size        = "Standard_D2s_v3"
+

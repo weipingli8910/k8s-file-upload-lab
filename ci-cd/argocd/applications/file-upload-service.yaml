@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: file-upload-service
+  namespace: argocd
+  labels:
+    app: file-upload-service
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/k8s-file-upload-lab  # Update with your repo URL
+    targetRevision: main
+    path: charts/file-upload-service
+    helm:
+      valueFiles:
+      - values-aws.yaml
+      parameters:
+      - name: image.repository
+        value: "894002457387.dkr.ecr.us-east-1.amazonaws.com/file-upload-service"  # Update with your ECR URL
+      - name: image.tag
+        value: "latest"
+      - name: config.s3Bucket
+        value: "your-s3-bucket-name"  # Update with your S3 bucket
+      - name: config.awsRegion
+        value: "us-east-1"
+      - name: namespace.create
+        value: "false"
+      - name: serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn
+        value: "arn:aws:iam::894002457387:role/file-upload-cluster-file-upload-service"  # Update with your IAM role ARN
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: file-upload
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=false
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+  revisionHistoryLimit: 10
+

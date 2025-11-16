@@ -1,0 +1,16 @@
+# Install Prometheus Operator CRDs
+# This is a simplified version - in production, use the official Helm chart
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+# For full Prometheus Operator installation, use:
+# kubectl create namespace monitoring
+# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# helm repo update
+# helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring
+
+# Or use the simplified Prometheus deployment below
+
