@@ -4,7 +4,7 @@ Complete lab setup for deploying a file upload service on **AWS (EKS)**, **GCP (
 
 **Supports all three major cloud providers!** See [MULTI_CLOUD.md](./MULTI_CLOUD.md)
 
-## Lab Overview
+## Lab Overview - ch
 
 This lab demonstrates:
 - **EKS** cluster deployment (AWS)
