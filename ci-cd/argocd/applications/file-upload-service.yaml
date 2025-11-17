@@ -25,8 +25,9 @@ spec:
         value: "us-east-1"
       - name: namespace.create
         value: "false"
-      - name: serviceAccount.iamRoleArn
-        value: "arn:aws:iam::894002457387:role/file-upload-cluster-file-upload-service"  # Update with your IAM role ARN
+      # IAM role ARN is set in values-aws.yaml, override here if needed:
+      # - name: serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+      #   value: "arn:aws:iam::894002457387:role/file-upload-cluster-file-upload-service"
   destination:
     server: https://kubernetes.default.svc
     namespace: file-upload
