@@ -24,6 +24,7 @@ serviceAccount:
   create: true
   name: ""  # If not set, uses fullname
   annotations: {}  # For IRSA, Workload Identity, Managed Identity
+  iamRoleArn: ""  # IAM role ARN for IRSA (alternative to annotations)
   automountServiceAccountToken: true
 
 # Application configuration

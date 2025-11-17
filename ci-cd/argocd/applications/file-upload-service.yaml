@@ -20,12 +20,12 @@ spec:
       - name: image.tag
         value: "latest"
       - name: config.s3Bucket
-        value: "your-s3-bucket-name"  # Update with your S3 bucket
+        value: "terraform-20251115065342088700000001"  # Update with your S3 bucket
       - name: config.awsRegion
         value: "us-east-1"
       - name: namespace.create
         value: "false"
-      - name: serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn
+      - name: serviceAccount.iamRoleArn
         value: "arn:aws:iam::894002457387:role/file-upload-cluster-file-upload-service"  # Update with your IAM role ARN
   destination:
     server: https://kubernetes.default.svc
