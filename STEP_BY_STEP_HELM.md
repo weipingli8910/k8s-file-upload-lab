@@ -212,7 +212,7 @@ terraform output -raw file_upload_service_role_arn
 The workflows are already configured in `.github/workflows/`:
 
 - **`ci.yml`**: Runs tests, builds Docker image, security scans, Helm linting
-- **`deploy.yml`**: Deploys to EKS (manual trigger or on main branch)
+- **`deploy.yml`**: Informational workflow (ArgoCD handles all deployments via GitOps)
 
 **Update repository URL in workflows if needed:**
 ```yaml
@@ -232,11 +232,21 @@ git push origin test-ci
 # Create a PR to see CI results
 ```
 
-### Step 4: Test Deployment Pipeline
+### Step 4: Deployment via GitOps (ArgoCD)
+
+**Note:** This project uses GitOps with ArgoCD for deployments. GitHub Actions only handles CI (build, test, scan). ArgoCD automatically deploys when changes are pushed to main.
 
 ```bash
-# Merge to main or use workflow_dispatch
-# Go to GitHub Actions → Deploy to EKS → Run workflow
+# After merging to main:
+# 1. CI workflow builds and pushes Docker image
+# 2. ArgoCD automatically detects git changes
+# 3. ArgoCD syncs and deploys using Helm charts
+
+# To manually trigger ArgoCD sync:
+argocd app sync file-upload-service
+
+# To check deployment status:
+argocd app get file-upload-service
 ```
 
 ## ArgoCD Setup
@@ -430,11 +440,15 @@ helm upgrade file-upload-service charts/file-upload-service \
 2. Commit and push
 3. ArgoCD will automatically sync
 
-### Via GitHub Actions
+### Deployment Flow (GitOps with ArgoCD)
 
-1. Push code → CI builds new image
-2. Merge to main → Deploy workflow updates image tag
-3. ArgoCD syncs automatically
+**All deployments are handled by ArgoCD via GitOps. GitHub Actions only handles CI.**
+
+1. **Push code** → CI workflow builds and pushes new Docker image
+2. **Merge to main** → ArgoCD automatically detects git changes
+3. **ArgoCD syncs** → Deploys using Helm charts from repository
+
+**No manual deployment steps needed** - ArgoCD handles everything automatically!
 
 ## Troubleshooting
 

@@ -1,4 +1,8 @@
-name: Deploy to EKS
+name: ArgoCD GitOps Deployment
+
+# This workflow is informational only.
+# ArgoCD handles all deployments via GitOps (auto-sync enabled).
+# CI workflow builds and pushes images, ArgoCD automatically deploys on git changes.
 
 on:
   push:
@@ -8,81 +12,30 @@ on:
       - 'application/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - development
-          - staging
-          - production
-      image_tag:
-        description: 'Docker image tag to deploy'
-        required: false
-        default: 'latest'
-
-env:
-  AWS_REGION: us-east-1
-  ECR_REPOSITORY: file-upload-service
 
 jobs:
-  deploy:
+  notify:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'production' }}
     steps:
     - uses: actions/checkout@v4
     
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-    
-    - name: Configure kubectl
+    - name: ArgoCD GitOps Info
       run: |
-        aws eks update-kubeconfig --name file-upload-cluster --region ${{ env.AWS_REGION }}
-    
-    - name: Setup Helm
-      uses: azure/setup-helm@v3
-      with:
-        version: '3.12.0'
-    
-    - name: Get Terraform outputs
-      id: terraform
-      run: |
-        # These would typically come from Terraform Cloud/state
-        # For now, using secrets or environment variables
-        echo "ecr_url=${{ secrets.ECR_URL }}" >> $GITHUB_OUTPUT
-        echo "s3_bucket=${{ secrets.S3_BUCKET }}" >> $GITHUB_OUTPUT
-        echo "iam_role_arn=${{ secrets.IAM_ROLE_ARN }}" >> $GITHUB_OUTPUT
-    
-    - name: Deploy file-upload-service
-      run: |
-        IMAGE_TAG=${{ github.event.inputs.image_tag || github.sha }}
-        helm upgrade --install file-upload-service charts/file-upload-service \
-          -f charts/file-upload-service/values-aws.yaml \
-          --set image.repository=${{ steps.terraform.outputs.ecr_url }} \
-          --set image.tag=$IMAGE_TAG \
-          --set config.s3Bucket=${{ steps.terraform.outputs.s3_bucket }} \
-          --set config.awsRegion=${{ env.AWS_REGION }} \
-          --set namespace.create=false \
-          --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ steps.terraform.outputs.iam_role_arn }} \
-          -n file-upload \
-          --wait --timeout=10m
-
-  notify-argocd:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Trigger ArgoCD sync
-      run: |
-        # This would trigger ArgoCD to sync the application
-        # Requires ArgoCD CLI or API access
-        echo "ArgoCD will automatically sync on next poll interval"
-        echo "Or use: argocd app sync file-upload-service"
+        echo "::notice title=GitOps Deployment::ArgoCD will automatically sync this change"
+        echo ""
+        echo "📦 Deployment Strategy: GitOps (ArgoCD)"
+        echo "🔄 Sync Mode: Automated (auto-sync enabled)"
+        echo "📝 Changes pushed to: ${{ github.ref }}"
+        echo "🔗 Commit: ${{ github.sha }}"
+        echo ""
+        echo "ArgoCD will:"
+        echo "  1. Detect the git change"
+        echo "  2. Sync the application automatically"
+        echo "  3. Deploy using Helm charts from the repository"
+        echo ""
+        echo "To manually trigger sync (if needed):"
+        echo "  argocd app sync file-upload-service"
+        echo ""
+        echo "To check ArgoCD app status:"
+        echo "  argocd app get file-upload-service"
 
