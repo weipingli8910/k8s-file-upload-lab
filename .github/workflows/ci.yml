@@ -48,10 +48,26 @@ jobs:
         cd application/backend
         npm run lint || echo "No lint script found"
     
-    - name: Run tests
+    - name: Run unit tests
       run: |
         cd application/backend
-        npm test || echo "No tests configured"
+        npm run test:unit
+    
+    - name: Run component tests
+      run: |
+        cd application/backend
+        npm run test:component
+    
+    - name: Run integration tests (optional)
+      continue-on-error: true
+      run: |
+        cd application/backend
+        npm run test:integration || echo "Integration tests skipped (requires S3/LocalStack)"
+    
+    - name: Generate test coverage
+      run: |
+        cd application/backend
+        npm run test:coverage || echo "Coverage generation skipped"
 
   build:
     needs: test

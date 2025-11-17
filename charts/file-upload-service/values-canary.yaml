@@ -1,0 +1,100 @@
+# Canary Deployment Configuration
+# This configuration enables canary deployment strategy using Argo Rollouts
+
+# Use canary deployment
+deploymentStrategy: "canary"
+
+# Base configuration
+replicaCount: 2
+
+image:
+  repository: ""  # Set via ArgoCD
+  tag: "latest"
+
+# Canary configuration
+canary:
+  enabled: true
+  # Initial canary percentage (0-100)
+  weight: 10
+  # Steps for gradual rollout
+  steps:
+    - setWeight: 10   # 10% traffic to canary
+    - pause: { duration: "5m" }  # Pause 5 minutes
+    - setWeight: 25   # 25% traffic to canary
+    - pause: { duration: "5m" }
+    - setWeight: 50   # 50% traffic to canary
+    - pause: { duration: "5m" }
+    - setWeight: 100  # 100% traffic to canary (promote)
+  
+  # Analysis (automated promotion/rollback)
+  analysis:
+    enabled: true
+    templates:
+      - name: success-rate
+        interval: "30s"
+        successCondition: "result[0] >= 0.95"  # 95% success rate
+        failureCondition: "result[0] < 0.90"    # Rollback if < 90%
+        provider:
+          prometheus:
+            address: "http://prometheus.monitoring.svc:9090"
+            query: |
+              sum(rate(http_requests_total{namespace="file-upload",status_code!~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total{namespace="file-upload"}[5m]))
+      
+      - name: latency
+        interval: "30s"
+        successCondition: "result[0] < 0.5"  # p95 latency < 500ms
+        failureCondition: "result[0] > 1.0"  # Rollback if > 1s
+        provider:
+          prometheus:
+            address: "http://prometheus.monitoring.svc:9090"
+            query: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket{namespace="file-upload"}[5m])) by (le)
+              )
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Monitoring
+monitoring:
+  enabled: true
+  prometheus:
+    scrape: true
+    port: 8080
+    path: "/metrics"
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
