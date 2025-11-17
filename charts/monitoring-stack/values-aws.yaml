@@ -1,13 +1,14 @@
 # AWS EKS specific values for monitoring stack
 
-# Use gp3 for better performance (or gp2 for compatibility)
+# Use gp2 (default) or gp3 if available
+# Check available storage classes: kubectl get storageclass
 kube-prometheus-stack:
   prometheus:
     prometheusSpec:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            storageClassName: gp3  # Use gp3 for AWS EKS
+            storageClassName: gp2  # Use gp2 (default) or gp3 if available
             accessModes:
               - ReadWriteOnce
             resources:
@@ -16,7 +17,7 @@ kube-prometheus-stack:
   
   grafana:
     persistence:
-      storageClassName: gp3
+      storageClassName: gp2  # Use gp2 (default) or gp3 if available
       size: 10Gi
   
   alertmanager:
@@ -24,7 +25,7 @@ kube-prometheus-stack:
       storage:
         volumeClaimTemplate:
           spec:
-            storageClassName: gp3
+            storageClassName: gp2  # Use gp2 (default) or gp3 if available
             accessModes:
               - ReadWriteOnce
             resources:
