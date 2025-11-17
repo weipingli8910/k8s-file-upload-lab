@@ -15,6 +15,12 @@ on:
       - '.github/workflows/ci.yml'
   workflow_dispatch:  # Allow manual trigger for testing
 
+# Permissions required for security scanning
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: file-upload-service
@@ -104,9 +110,10 @@ jobs:
         severity: 'CRITICAL,HIGH'
     
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: 'trivy-results.sarif'
+      continue-on-error: true  # Don't fail the build if upload fails
 
   helm-lint:
     runs-on: ubuntu-latest
