@@ -1,0 +1,85 @@
+# Blue/Green Deployment Configuration
+# This configuration enables blue/green deployment strategy
+
+# Use blue/green deployment
+deploymentStrategy: "blue-green"
+
+# Blue deployment (current production)
+blue:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ""  # Set via ArgoCD
+    tag: "blue"     # Current production tag
+  service:
+    labels:
+      version: "blue"
+
+# Green deployment (new version)
+green:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ""  # Set via ArgoCD
+    tag: "green"    # New version tag
+  service:
+    labels:
+      version: "green"
+
+# Traffic switching
+traffic:
+  # Initial traffic split (0-100)
+  blue: 100
+  green: 0
+  
+  # Switch traffic to green (set to true to switch)
+  switchToGreen: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  # Selector will switch between blue and green
+  selector:
+    app.kubernetes.io/name: file-upload-service
+    version: "blue"  # Change to "green" to switch traffic
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Monitoring
+monitoring:
+  enabled: true
+  prometheus:
+    scrape: true
+    port: 8080
+    path: "/metrics"
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+

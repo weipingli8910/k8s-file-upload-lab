@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: file-upload-service-prod-blue-green
+  namespace: argocd
+  labels:
+    app: file-upload-service
+    environment: production
+    strategy: blue-green
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/weipingli8910/k8s-file-upload-lab
+    targetRevision: main
+    path: charts/file-upload-service
+    helm:
+      valueFiles:
+      - values-aws.yaml
+      - values-blue-green.yaml
+      parameters:
+      - name: image.repository
+        value: "894002457387.dkr.ecr.us-east-1.amazonaws.com/file-upload-service"
+      - name: image.tag
+        value: "latest"
+      - name: config.s3Bucket
+        value: "terraform-20251115065342088700000001"
+      - name: config.awsRegion
+        value: "us-east-1"
+      - name: namespace.create
+        value: "false"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: file-upload-prod
+  syncPolicy:
+    automated:
+      prune: false  # Manual sync for production
+      selfHeal: false
+    syncOptions:
+    - CreateNamespace=false
+  revisionHistoryLimit: 10
+
