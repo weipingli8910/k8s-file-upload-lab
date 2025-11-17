@@ -20,5 +20,7 @@ ingress:
 # Set this to your IAM role ARN
 serviceAccount:
   annotations:
-    eks.amazonaws.com/role-arn: ""  # Set this value
+    eks.amazonaws.com/role-arn: "arn:aws:iam::894002457387:role/file-upload-cluster-file-upload-service"  # Update with your IAM role ARN
+  # Alternative: use iamRoleArn parameter instead
+  # iamRoleArn: ""
 

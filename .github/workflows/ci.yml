@@ -150,9 +150,22 @@ jobs:
         helm template test charts/file-upload-service \
           -f charts/file-upload-service/values-aws.yaml \
           --set image.repository=test-repo \
+          --set image.tag=test-tag \
           --set config.s3Bucket=test-bucket \
+          --set config.awsRegion=us-east-1 \
           --set namespace.create=false \
+          --set serviceAccount.iamRoleArn=arn:aws:iam::123456789012:role/test-role \
           --debug
+      
+    - name: Validate ServiceAccount annotation
+      run: |
+        helm template test charts/file-upload-service \
+          -f charts/file-upload-service/values-aws.yaml \
+          --set serviceAccount.iamRoleArn=arn:aws:iam::123456789012:role/test-role \
+          --set namespace.create=false | \
+          grep -A 2 "eks.amazonaws.com/role-arn" | \
+          grep -q "arn:aws:iam::123456789012:role/test-role" || \
+          (echo "ERROR: ServiceAccount annotation validation failed" && exit 1)
     
     - name: Template monitoring-stack chart
       run: |
